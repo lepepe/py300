@@ -8,6 +8,11 @@ SQL_USER = os.environ.get("sql_user")
 SQL_PASSWD = os.environ.get("sql_passwd")
 SQL_PORT = os.environ.get("sql_port")
 
+# Helpers functions
 def currency(value):
     formatted_float = "${:,.2f}".format(value)
     return formatted_float
+
+def gross_margin(netsales, cogs):
+    gm = ((netsales - cogs)/netsales)*100
+    return "{:,.2f} %".format(gm)
