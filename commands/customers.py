@@ -39,13 +39,13 @@ def credit_available(results):
         if a > 0:
             panel = (
                 f"Credit limit: [green]{currency(limit)}[/green]\n"
-                f"Outstarnding Balance: [green]{currency(balance)}[/green]\n"
+                f"Outstanding Balance: [green]{currency(balance)}[/green]\n"
                 f"Available: [green]{currency(a)}[/green]\n"
                 f"Terms: [blue]{terms}[/blue]"
             )
         else:
             panel = (
-                f"Credit limit: [red]{currency(limit)}[/red]\n"
+                f"Credit Limit: [red]{currency(limit)}[/red]\n"
                 f"Outstarnding Balance: [red]{currency(balance)}[/red]\n"
                 f"Available: [red]{currency(a)}[/red]\n"
                 f"Terms: [blue]{terms}[/blue]"
@@ -91,7 +91,7 @@ def receivables(account):
 
 def sales_by_years(account):
     # Creating dataframe
-    df = pd.read_sql(queries.SALES_ANALYSIS, con, params=account.split())
+    df = pd.read_sql(queries.sales_analysis('CUSTOMER', account), con)
     data = df.groupby(['YR']).agg({
         'NETSALES':sum,
         'FAMTSALES':sum,
@@ -103,7 +103,7 @@ def sales_by_years(account):
     table.add_column("Year", justify="left", no_wrap=True)
     table.add_column("Sales", justify="right", no_wrap=True)
     table.add_column("Returns", justify="right", no_wrap=True)
-    table.add_column("Netsales", justify="right", no_wrap=True, style="blue")
+    table.add_column("Net Sales", justify="right", no_wrap=True, style="blue")
     table.add_column("COGS", justify="right", no_wrap=True)
     table.add_column("Margin (%)", justify="right", no_wrap=True)
 

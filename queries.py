@@ -1,14 +1,16 @@
-SALES_ANALYSIS = """
-    SELECT
-        s.CUSTOMER, s.ITEM, i.FMTITEMNO, i.[DESC], s.YR, s.PERIOD, s.TRANDATE,
-        s.TRANNUM, s.ORDNUMBER, s.SALESPER, s.LOCATION, s.TERRITORY,
-        s.CATEGORY, c.[DESC], s.SCURN, s.FAMTSALES, s.FRETSALES,
-        s.FCSTSALES, (s.FAMTSALES-s.FRETSALES) AS NETSALES
-    FROM OESHDT s
-    JOIN ICITEM i ON i.ITEMNO = s.ITEM
-    JOIN ICCATG c ON c.CATEGORY = s.CATEGORY
-    WHERE CUSTOMER = ?
-"""
+def sales_analysis(r, q):
+    sa = f"""
+        SELECT
+            s.CUSTOMER, s.ITEM, i.FMTITEMNO, i.[DESC], s.YR, s.PERIOD, s.TRANDATE,
+            s.TRANNUM, s.ORDNUMBER, s.SALESPER, s.LOCATION, s.TERRITORY,
+            s.CATEGORY, c.[DESC], s.SCURN, s.FAMTSALES, s.FRETSALES,
+            s.FCSTSALES, (s.FAMTSALES-s.FRETSALES) AS NETSALES
+        FROM OESHDT s
+        JOIN ICITEM i ON i.ITEMNO = s.ITEM
+        JOIN ICCATG c ON c.CATEGORY = s.CATEGORY
+        WHERE {r} = '{q}'
+    """
+    return sa
 
 UNPAID_RECEIVABLES = """
     SELECT
