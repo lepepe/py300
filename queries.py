@@ -12,6 +12,32 @@ def sales_analysis(r, q):
     """
     return sa
 
+def inv_analysis(q):
+    sa = f"""
+        SELECT
+            RTRIM(s.CUSTOMER) AS 'Customer',
+            RTRIM(i.FMTITEMNO) AS 'Item',
+            RTRIM(i.[DESC]) AS 'Description',
+            CAST(s.YR AS varchar) AS 'Year',
+            CAST(s.PERIOD AS varchar) AS 'Period',
+            CONVERT(datetime,CONVERT(char(8),s.TRANDATE)) AS 'Trandate',
+            RTRIM(s.LOCATION) AS 'Location',
+            SUM(s.QTYSOLD) AS 'Quantity',
+            SUM(l.TOTALCOST) AS 'TotalCost',
+            SUM(FAMTSALES-FRETSALES) AS 'Netsales',
+            (l.QTYONHAND-l.QTYCOMMIT) AS 'QtyAV',
+            l.QTYSALORDR AS 'QtySO',
+            l.QTYONORDER AS 'QtyPO'
+        FROM OESHDT s
+        JOIN ICILOC l ON l.ITEMNO = s.ITEM AND l.[LOCATION] = s.[LOCATION]
+        JOIN ICITEM i ON l.ITEMNO = i.ITEMNO
+        WHERE i.FMTITEMNO = '{q}'
+        GROUP BY s.CUSTOMER, i.FMTITEMNO, i.[DESC], s.YR, s.PERIOD,
+            s.TRANDATE, s.LOCATION, l.QTYONHAND, l.QTYCOMMIT,
+            l.QTYSALORDR, l.QTYONORDER
+    """
+    return sa
+
 UNPAID_RECEIVABLES = """
     SELECT
     CASE
