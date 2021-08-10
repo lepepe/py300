@@ -1,6 +1,8 @@
 import click
 import pyodbc
 import pandas as pd
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from rich import box
 from rich.console import Console
 from rich.table import Table
@@ -16,6 +18,7 @@ layout = Layout()
 
 con = pyodbc.connect('DRIVER={FreeTDS};SERVER='+config.SQL_SERVER+';DATABASE='+config.DB_NAME+';PORT='+config.SQL_PORT+';UID='+config.SQL_USER+';PWD='+ config.SQL_PASSWD)
 cursor = con.cursor()
+year = (datetime.now().year - 5)
 
 def customers(results):
     table = Table(title="Customer(s)", expand=True)
@@ -91,7 +94,7 @@ def receivables(account):
 
 def sales_by_years(account):
     # Creating dataframe
-    df = pd.read_sql(queries.sales_analysis('CUSTOMER', account), con)
+    df = pd.read_sql(queries.sales_analysis('CUSTOMER', account, year), con)
     data = df.groupby(['YR']).agg({
         'NETSALES':sum,
         'FAMTSALES':sum,
