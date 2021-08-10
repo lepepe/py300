@@ -18,7 +18,10 @@ def number_precision(value):
     return formatted_float
 
 def gross_margin(netsales, cogs):
-    gm = ((netsales - cogs)/netsales)*100
+    if netsales > 0:
+        gm = ((netsales - cogs)/netsales)*100
+    else:
+        gm = 0
     return "{:,.2f} %".format(gm)
 
 def year():

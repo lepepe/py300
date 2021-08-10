@@ -3,6 +3,8 @@ import pyodbc
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+import inventorize3 as inv
+import numpy as np
 from rich import box
 from rich.console import Console
 from rich.table import Table
@@ -41,6 +43,51 @@ def items(results):
             f"{r.UNITWGT} " + f"({r.WEIGHTUNIT.strip()})"
         )
     return table
+
+def ranking(item):
+    sql = """
+        SELECT
+            RTRIM(i.FMTITEMNO) AS 'Item', s.YR,
+            CONVERT(datetime,CONVERT(char(8),s.TRANDATE)) AS 'Trandate',
+            SUM(s.QTYSOLD) AS 'Quantity',
+            SUM(FAMTSALES-FRETSALES) AS 'Netsales'
+        FROM OESHDT s
+        JOIN ICITEM i ON i.ITEMNO = s.ITEM
+        WHERE (YR > ?)
+        GROUP BY i.FMTITEMNO, s.YR, s.TRANDATE
+    """
+
+    df = pd.read_sql(sql, con, params=str(year).split())
+    data = df.set_index("Trandate").sort_values(by="Trandate",ascending=True).last('12M')
+    data = data.groupby(['Item']).agg(Volume=('Quantity',np.sum),Revenue=('Netsales',np.sum)).reset_index()
+    ranking = inv.ABC(data[['Item','Revenue']]).reset_index()
+    item_rank = ranking[ranking['Item'] == item]
+
+    if item_rank.empty:
+        panel = (
+            f"Ranking: [magenta]No sales found for the last 12 months.[/magenta]"
+        )
+    else:
+        for index, i in item_rank.iterrows():
+            if i.Category == 'A':
+                panel = (
+                    f"Ranking: [yellow]{i.Category}[/yellow]\n"
+                    f"Revenue: [yellow]{currency(i.Revenue)}[/yellow]\n"
+                    f"Percentage: [yellow]{number_precision(i.Percentage*100)}%[/yellow]\n"
+                )
+            elif i.Category == 'B':
+                panel = (
+                    f"Ranking: [white]{i.Category}[/white]\n"
+                    f"Revenue: [white]{currency(i.Revenue)}[/white]\n"
+                    f"Percentage: [white]{number_precision(i.Percentage*100)}%[/white]\n"
+                )
+            elif i.Category == 'C':
+                panel = (
+                    f"ranking: [red]{i.category}[/red]\n"
+                    f"Revenue: [red]{currency(i.Revenue)}[/red]\n"
+                    f"Percentage: [red]{number_precision(i.Percentage*100)}%[/red]\n"
+                )
+    return panel
 
 def sales_by_years(item):
     # Creating dataframe
@@ -209,9 +256,8 @@ def cli(item, find):
         layout["header"].split(
             Layout(Panel(f"Item Number: [blue]{item}[/blue]"))
         )
-        layout["upper"].update(
-            #items(results)
-            Panel("Display ranking, vendors and number of active documents")
+        layout["upper"].split(
+            Layout(Panel(ranking(item), title="Ranking"))
         )
         layout["optf"].split(
             Layout(Panel(inv_coverage(item)[0], title="Inventory Coverage")),
