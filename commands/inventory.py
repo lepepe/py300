@@ -1,6 +1,8 @@
 import click
 import pyodbc
 import pandas as pd
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from rich import box
 from rich.console import Console
 from rich.table import Table
@@ -16,6 +18,7 @@ layout = Layout()
 
 con = pyodbc.connect('DRIVER={FreeTDS};SERVER='+config.SQL_SERVER+';DATABASE='+config.DB_NAME+';PORT='+config.SQL_PORT+';UID='+config.SQL_USER+';PWD='+ config.SQL_PASSWD)
 cursor = con.cursor()
+year = (datetime.now().year - 5)
 
 def items(results):
     table = Table(expand=True)
@@ -41,7 +44,7 @@ def items(results):
 
 def sales_by_years(item):
     # Creating dataframe
-    df = pd.read_sql(queries.sales_analysis('FMTITEMNO', item), con)
+    df = pd.read_sql(queries.sales_analysis('FMTITEMNO', item, year), con)
     data = df.groupby(['YR']).agg({
         'NETSALES':sum,
         'FAMTSALES':sum,
@@ -68,6 +71,7 @@ def sales_by_years(item):
         )
     return table
 
+# Aggregated inventory coverage and availability
 def inv_coverage_global(df):
     table = Table(box=box.MINIMAL_DOUBLE_HEAD, expand=True)
     table.add_column("Available", justify="left", no_wrap=True, style="green")
@@ -85,6 +89,7 @@ def inv_coverage_global(df):
     )
     return table
 
+# Display inventory coverage and availability by locations
 def inv_coverage_by_loc(df):
     table = Table(box=box.MINIMAL_DOUBLE_HEAD, expand=True)
     table.add_column("Loc", justify="left", no_wrap=True)
@@ -105,32 +110,79 @@ def inv_coverage_by_loc(df):
         )
     return table
 
-def inv_coverage(item):
-    df = pd.read_sql(queries.inv_analysis(item), con)
+def last_12_months(df):
+    table = Table(box=box.MINIMAL_DOUBLE_HEAD, expand=True)
+    months = [col for col in df.columns if col.startswith('20') | col.startswith('Loc')]
 
+    for m in months:
+        table.add_column(m, justify="right", no_wrap=True)
+
+    for index, row in df.iterrows():
+        table.add_row(
+            row['Location'],
+            number_precision(row[7]),
+            number_precision(row[8]),
+            number_precision(row[9]),
+            number_precision(row[10]),
+            number_precision(row[11]),
+            number_precision(row[12]),
+            number_precision(row[13]),
+            number_precision(row[14]),
+            number_precision(row[15]),
+            number_precision(row[16]),
+            number_precision(row[17]),
+            number_precision(row[18]),
+        )
+    return table
+
+# Calculate inventory coverage, availability and sales aggregated and
+# by locations using pandas
+def inv_coverage(item):
+    df = pd.read_sql(queries.inv_analysis(item, year), con)
+
+    # Generate a dataframe for the last 12 periods (YYYY-mm)
+    months_ago = datetime.now() - relativedelta(months=11)
+    periods = pd.period_range(months_ago.strftime('%Y-%m-%d'), datetime.today().strftime('%Y-%m-%d'), freq='M')
+    df2 = pd.DataFrame(periods, columns = ['Period']).reset_index()
+    df2['Period'] = df2['Period'].astype(str)
+    first = df2.iloc[[0]]['Period'][0]
+    last = df2.iloc[[-1]]['Period'][11]
+
+    # Trnasforming data and combine with the last 12 periods
     data = df.set_index("Trandate").sort_values(by="Trandate",ascending=True).last('12M')
     data['QtyAve'] = data.groupby(['Item', 'Location'])['Quantity'].transform('sum')/12
     data['Coverage'] = data['QtyAV']/data['QtyAve']
+    data['Period'] = data['Period'].str.zfill(2)
     data['Period'] = data[['Year', 'Period']].apply(lambda x: '-'.join(x), axis=1)
+    data = data[(data['Period'] >= first) & (data['Period'] <= last)]
+    data = pd.merge(df2, data, how='outer')
+    data['Item'] = item
+    fill_data = data.fillna(0)
 
+    # Group data including locations
+    data = fill_data.groupby(
+        ['Item', 'Location','Period','QtyAV','QtySO','QtyPO','Coverage','QtyAve'], as_index=False
+    ).agg(
+        {'Quantity':sum}
+    ).sort_values(by='Item', ascending=False)
+
+    # Pivot
+    serie = data.pivot_table('Quantity', index=['Item', 'Location', 'QtyAV', 'QtySO', 'QtyPO', 'Coverage', 'QtyAve'], columns=['Period'], aggfunc={'Quantity':sum}).reset_index()
+    serie = serie[(serie['Location'] != 0)].fillna(0)
+
+    # Global analysis grouped
     sum_df = data.groupby(['Item', 'Period']).agg({'Quantity':sum})
     sum_df['QtyAve'] = sum_df.groupby(['Item'])['Quantity'].transform('sum')/12
-
-    serie = data.pivot_table('Quantity', index=['Item', 'Location', 'QtyAV', 'QtySO', 'QtyPO', 'Coverage', 'QtyAve'], columns=['Period'], aggfunc={'Quantity':sum}).reset_index()
     global_serie = sum_df.pivot_table('Quantity', index=['Item', 'QtyAve'], fill_value=0, columns=['Period'], aggfunc={'Quantity':sum}).reset_index()
-
     global_df = df[['Item','QtyAV','QtySO','QtyPO']].drop_duplicates()
     global_df = global_df.groupby(
         ['Item'], as_index=False
     ).agg(
-        {
-            'QtyAV':sum,
-            'QtySO':sum,
-            'QtyPO':sum
-        }
+        {'QtyAV':sum, 'QtySO':sum, 'QtyPO':sum}
     ).sort_values(by='Item', ascending=False)
     global_data = pd.merge(global_df, global_serie, how='outer')
-    return inv_coverage_global(global_data), inv_coverage_by_loc(serie)
+
+    return inv_coverage_global(global_data), inv_coverage_by_loc(serie), last_12_months(serie)
 
 @click.command()
 @click.option("-i", "--item", required=False, help="Item number")
@@ -150,7 +202,7 @@ def cli(item, find):
         # Divide the lower layout in two parts
         layout["lower"].split_row(
             Layout(name="optf"),
-            Layout(name="sales"),
+            Layout(name="sales", ratio=2),
         )
 
         # Rendered data into the layouts
@@ -158,14 +210,16 @@ def cli(item, find):
             Layout(Panel(f"Item Number: [blue]{item}[/blue]"))
         )
         layout["upper"].update(
-            items(results)
+            #items(results)
+            Panel("Display ranking, vendors and number of active documents")
         )
         layout["optf"].split(
-           Layout(Panel(inv_coverage(item)[0], title="Inventory Coverage")),
-           Layout(Panel(inv_coverage(item)[1], title="By Locations"))
+            Layout(Panel(inv_coverage(item)[0], title="Inventory Coverage")),
+            Layout(Panel(inv_coverage(item)[1], title="By Locations"))
         )
-        layout["sales"].update(
-            Panel(sales_by_years(item), title="Sales by Years")
+        layout["sales"].split(
+            Layout(Panel(sales_by_years(item), title="Sales by Years")),
+            Layout(Panel(inv_coverage(item)[2], title="Last 12 months"))
         )
         console.print(layout)
 

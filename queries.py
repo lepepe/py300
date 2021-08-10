@@ -1,4 +1,4 @@
-def sales_analysis(r, q):
+def sales_analysis(r, q, year):
     sa = f"""
         SELECT
             s.CUSTOMER, s.ITEM, i.FMTITEMNO, i.[DESC], s.YR, s.PERIOD, s.TRANDATE,
@@ -9,10 +9,11 @@ def sales_analysis(r, q):
         JOIN ICITEM i ON i.ITEMNO = s.ITEM
         JOIN ICCATG c ON c.CATEGORY = s.CATEGORY
         WHERE {r} = '{q}'
+        AND s.YR >= {year}
     """
     return sa
 
-def inv_analysis(q):
+def inv_analysis(q, year):
     sa = f"""
         SELECT
             RTRIM(s.CUSTOMER) AS 'Customer',
@@ -32,6 +33,7 @@ def inv_analysis(q):
         JOIN ICILOC l ON l.ITEMNO = s.ITEM AND l.[LOCATION] = s.[LOCATION]
         JOIN ICITEM i ON l.ITEMNO = i.ITEMNO
         WHERE i.FMTITEMNO = '{q}'
+        AND s.YR >= {year}
         GROUP BY s.CUSTOMER, i.FMTITEMNO, i.[DESC], s.YR, s.PERIOD,
             s.TRANDATE, s.LOCATION, l.QTYONHAND, l.QTYCOMMIT,
             l.QTYSALORDR, l.QTYONORDER

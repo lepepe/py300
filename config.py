@@ -20,3 +20,6 @@ def number_precision(value):
 def gross_margin(netsales, cogs):
     gm = ((netsales - cogs)/netsales)*100
     return "{:,.2f} %".format(gm)
+
+def year():
+    return (datetime.now().year - 5)
