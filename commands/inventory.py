@@ -234,7 +234,6 @@ def inv_coverage(item):
 @click.command()
 @click.option("-i", "--item", required=False, help="Item number")
 @click.option("-f", "--find", required=False, help="Find item by code or description")
-@click.option("-r", "--rank", required=False, help="Summary item ranking")
 def cli(item, find):
     """ Table: Items (ICITEM) """
 
