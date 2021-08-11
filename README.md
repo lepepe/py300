@@ -6,7 +6,7 @@ py300 is a simple CLI python app based on [click](https://click.palletsprojects.
 
 ### Intall required packages
 
-Install packages with pip: -r requirements.txt
+Install packages with: pip -r requirements.txt
 
 `pip install -r requirements.txt`
 
@@ -26,6 +26,36 @@ Create or edit `/etc/odbcinst.ini` and `/etc/odbc.ini` with the following conten
 Description     = FreeTDS
 Driver          = /usr/lib/libtdsodbc.so.0
 ```
+
+### Run the app as system command
+
+Create a setup file with the metadata inforamtion including the required packages:
+
+```
+name='py300',
+version='0.0.1',
+description='Simple CLI app to interac with Sage300',
+author='Jose Perez (a.k.a Lepepe)',
+author_email='lepepe@hey.com',
+url='https://github.com/lepepe/py300',
+license='MIT',
+packages=find_packages(),
+install_requires=[
+    'click',
+    'pandas',
+    'numpy',
+    'pyodbc',
+    'rich',
+    'inventorize3'
+],
+entry_points={
+    'console_scripts': [
+        'py300=main:cli'
+    ]
+}
+```
+
+Then run `sudo pip install --editable .`
 
 - /etc/odbc.ini
 
