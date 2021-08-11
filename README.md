@@ -65,4 +65,6 @@ Similar to the customers inventory command can filter items and display item inf
 
 - Ranking summary
 - Sales forecasting
-- Backorders
+- Backorder
+- General ledger (Financial Statements)
+- Dashboard
