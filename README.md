@@ -27,6 +27,25 @@ Description     = FreeTDS
 Driver          = /usr/lib/libtdsodbc.so.0
 ```
 
+- /etc/odbc.ini
+
+```
+[SQLServer]
+Driver = FreeTDS
+Description = Connection to SQL Server
+Trace = No
+Server = IP_ADDRESS
+Port = 1433
+TDS version = VERSION
+Database = DB_NAME
+```
+
+Make sure to change `IP_ADDRESS`, `VERSION` and `DB_NAME`.
+
+#### Testing connection via command line
+
+`isql -v SQLServer <user> <password>`
+
 ### Run the app as system command
 
 Create a setup file with the metadata inforamtion including the required packages:
@@ -56,26 +75,6 @@ entry_points={
 ```
 
 Then run `sudo pip install --editable .`
-
-- /etc/odbc.ini
-
-```
-[SQLServer]
-Driver = FreeTDS
-Description = Connection to SQL Server
-Trace = No
-Server = IP_ADDRESS
-Port = 1433
-TDS version = VERSION
-Database = DB_NAME
-```
-
-Make sure to change `IP_ADDRESS`, `VERSION` and `DB_NAME`.
-
-#### Testing connection via command line
-
-`isql -v SQLServer <user> <password>`
-
 
 ## Getting started
 
